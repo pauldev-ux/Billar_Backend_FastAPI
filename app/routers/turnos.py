@@ -35,6 +35,7 @@ def turno_to_dict(turno: Turno):
         "tarifa_hora": turno.tarifa_hora,
         "tiempo_estimado_min": turno.tiempo_estimado_min,
         "minutos_extra": turno.minutos_extra,
+        "tiempo_total_min": turno.tiempo_estimado_min + turno.minutos_extra,
         "subtotal_tiempo": turno.subtotal_tiempo,
         "subtotal_productos": turno.subtotal_productos,
         "descuento": turno.descuento,

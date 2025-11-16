@@ -44,6 +44,7 @@ class TurnoOut(BaseModel):
     tarifa_hora: float
     tiempo_estimado_min: int
     minutos_extra: int
+    tiempo_total_min: int
     subtotal_tiempo: float
     subtotal_productos: float
     descuento: float
