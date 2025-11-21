@@ -29,6 +29,7 @@ class AgregarProducto(BaseModel):
 
 class CerrarTurno(BaseModel):
     descuento: float = 0
+    servicios_extras: float = 0  # 👈 NUEVO
 
 
 class TurnoOut(BaseModel):
@@ -40,6 +41,7 @@ class TurnoOut(BaseModel):
 
     subtotal_tiempo: float
     subtotal_productos: float
+    servicios_extras: float
     descuento: float
     total_final: float
     estado: str

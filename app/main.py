@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, mesas, productos, consumos, facturas, reportes, users, turnos
+from app.routers import auth, mesas, productos, consumos, facturas, reportes, users, turnos, compras_productos
 from app.database import Base, engine
 
 Base.metadata.create_all(bind=engine)
@@ -23,3 +23,4 @@ app.include_router(facturas.router)
 app.include_router(reportes.router)
 app.include_router(users.router)
 app.include_router(turnos.router)
+app.include_router(compras_productos.router)

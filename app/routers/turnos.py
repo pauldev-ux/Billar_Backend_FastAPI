@@ -30,6 +30,7 @@ def turno_to_dict(turno: Turno):
         "tarifa_hora": turno.tarifa_hora,
         "subtotal_tiempo": turno.subtotal_tiempo,
         "subtotal_productos": turno.subtotal_productos,
+        "servicios_extras": turno.servicios_extras,
         "descuento": turno.descuento,
         "total_final": turno.total_final,
         "estado": turno.estado,
@@ -37,9 +38,7 @@ def turno_to_dict(turno: Turno):
     }
 
 
-
-#INICIAR TURNO
-
+# INICIAR TURNO
 @router.post("/iniciar", response_model=TurnoOut)
 def iniciar_turno(data: TurnoCreate, db: Session = Depends(get_db)):
     mesa = db.query(Mesa).filter(Mesa.id == data.mesa_id).first()
@@ -65,8 +64,7 @@ def iniciar_turno(data: TurnoCreate, db: Session = Depends(get_db)):
     return turno_to_dict(turno)
 
 
-# 🟩 AGREGAR PRODUCTO
-
+# AGREGAR PRODUCTO
 @router.post("/{turno_id}/agregar-producto", response_model=TurnoOut)
 def agregar_producto(turno_id: int, data: AgregarProducto, db: Session = Depends(get_db)):
     turno = db.query(Turno).filter(Turno.id == turno_id, Turno.estado == "abierto").first()
@@ -99,23 +97,35 @@ def agregar_producto(turno_id: int, data: AgregarProducto, db: Session = Depends
     return turno_to_dict(turno)
 
 
-# 🔍 PREVIEW DEL CIERRE
-
+# PREVIEW ANTES DE CERRAR TURNO
 @router.get("/{turno_id}/preview", response_model=TurnoOut)
 def preview(turno_id: int, db: Session = Depends(get_db)):
     turno = db.query(Turno).filter(Turno.id == turno_id).first()
     if not turno:
         raise HTTPException(404, "Turno no encontrado")
 
+    # calcular tiempo real
     minutos = (datetime.now() - turno.hora_inicio).total_seconds() / 60
-    horas = minutos / 60
 
-    turno.subtotal_tiempo = horas * turno.tarifa_hora
-    turno.total_final = turno.subtotal_tiempo + turno.subtotal_productos - turno.descuento
+    # Reglas:
+    # <= 30 minutos → media hora
+    # >= 31 minutos → hora completa
+    if minutos <= 30:
+        subtotal = (turno.tarifa_hora / 2)
+    else:
+        horas_completas = int(minutos // 60)
+        resto = minutos % 60
+
+        subtotal = horas_completas * turno.tarifa_hora
+        subtotal += turno.tarifa_hora if resto >= 31 else turno.tarifa_hora / 2
+
+    turno.subtotal_tiempo = subtotal
+    turno.total_final = subtotal + turno.subtotal_productos + turno.servicios_extras - turno.descuento
 
     return turno_to_dict(turno)
 
 
+# CERRAR TURNO
 @router.patch("/{turno_id}/cerrar", response_model=TurnoOut)
 def cerrar_turno(turno_id: int, data: CerrarTurno, db: Session = Depends(get_db)):
     turno = db.query(Turno).filter(Turno.id == turno_id, Turno.estado == "abierto").first()
@@ -125,11 +135,21 @@ def cerrar_turno(turno_id: int, data: CerrarTurno, db: Session = Depends(get_db)
     turno.hora_fin = datetime.now()
 
     minutos = (turno.hora_fin - turno.hora_inicio).total_seconds() / 60
-    horas = minutos / 60
 
-    turno.subtotal_tiempo = horas * turno.tarifa_hora
+    if minutos <= 30:
+        subtotal = (turno.tarifa_hora / 2)
+    else:
+        horas_completas = int(minutos // 60)
+        resto = minutos % 60
+
+        subtotal = horas_completas * turno.tarifa_hora
+        subtotal += turno.tarifa_hora if resto >= 31 else turno.tarifa_hora / 2
+
+    turno.subtotal_tiempo = subtotal
     turno.descuento = data.descuento
-    turno.total_final = turno.subtotal_tiempo + turno.subtotal_productos - turno.descuento
+    turno.servicios_extras = data.servicios_extras
+
+    turno.total_final = subtotal + turno.subtotal_productos + turno.servicios_extras - turno.descuento
     turno.estado = "cerrado"
 
     mesa = db.query(Mesa).filter(Mesa.id == turno.mesa_id).first()

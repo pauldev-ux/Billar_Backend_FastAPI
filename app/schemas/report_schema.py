@@ -15,6 +15,7 @@ class ReporteTurno(BaseModel):
     subtotal_tiempo: float
     subtotal_productos: float
     descuento: float
+    servicios_extras: float
     total_final: float
     consumos: List[ReporteConsumo]
 
@@ -27,4 +28,5 @@ class ReporteOut(BaseModel):
     total_tiempo: float
     total_productos: float
     total_descuentos: float
+    total_servicios_extras: float
     total_general: float
