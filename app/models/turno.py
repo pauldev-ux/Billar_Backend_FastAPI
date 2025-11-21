@@ -12,8 +12,6 @@ class Turno(Base):
     hora_fin = Column(DateTime, nullable=True)
 
     tarifa_hora = Column(Float, nullable=False)
-    tiempo_estimado_min = Column(Integer, default=0)
-    minutos_extra = Column(Integer, default=0)
 
     subtotal_tiempo = Column(Float, default=0)
     subtotal_productos = Column(Float, default=0)

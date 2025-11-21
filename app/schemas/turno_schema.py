@@ -5,7 +5,7 @@ from typing import List
 class ConsumoDetalle(BaseModel):
     id: int
     producto_id: int
-    producto_nombre: str  # 👈 nuevo campo
+    producto_nombre: str
     cantidad: int
     subtotal: float
 
@@ -16,7 +16,6 @@ class ConsumoDetalle(BaseModel):
 class TurnoBase(BaseModel):
     mesa_id: int
     tarifa_hora: float
-    tiempo_estimado_min: int
 
 
 class TurnoCreate(TurnoBase):
@@ -26,10 +25,6 @@ class TurnoCreate(TurnoBase):
 class AgregarProducto(BaseModel):
     producto_id: int
     cantidad: int
-
-
-class AgregarTiempo(BaseModel):
-    minutos: int
 
 
 class CerrarTurno(BaseModel):
@@ -42,9 +37,7 @@ class TurnoOut(BaseModel):
     hora_inicio: datetime
     hora_fin: datetime | None
     tarifa_hora: float
-    tiempo_estimado_min: int
-    minutos_extra: int
-    tiempo_total_min: int
+
     subtotal_tiempo: float
     subtotal_productos: float
     descuento: float

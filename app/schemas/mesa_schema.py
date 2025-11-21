@@ -4,6 +4,8 @@ from datetime import datetime
 class MesaBase(BaseModel):
     nombre: str
     tarifa_por_hora: float
+    tipo_tiempo: str = "limitado"
+    tiempo_default_min: int = 60
 
 class MesaCreate(MesaBase):
     pass
@@ -19,12 +21,11 @@ class MesaOut(BaseModel):
     tarifa_por_hora: float
     estado: str
     hora_inicio: datetime | None = None
-    tiempo_estimado_min: int | None = None
     turno_activo: int | None = None
-    minutos_extra: int = 0      # 👈 añadido
 
     class Config:
         from_attributes = True
+
 
 
 

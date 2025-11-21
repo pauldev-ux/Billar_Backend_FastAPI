@@ -1,79 +1,79 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime
 from app.database import get_db
-from app.models.factura import Factura
-from app.models.consumo import Consumo
-from app.models.producto import Producto
+from app.models.turno import Turno
+from app.schemas.report_schema import ReporteOut, ReporteTurno, ReporteConsumo
+from app.models.mesa import Mesa
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
 
 
-def formatear_factura(factura: Factura, db: Session):
-    consumos = (
-        db.query(Consumo, Producto)
-        .join(Producto, Producto.id == Consumo.producto_id)
-        .filter(Consumo.mesa_id == factura.mesa_id)
-        .all()
-    )
-
-    detalle_consumos = [
-        {
-            "producto": prod.nombre,
-            "cantidad": cons.cantidad,
-            "precio_unitario": cons.precio_unitario,
-            "subtotal": cons.subtotal
-        }
-        for cons, prod in consumos
-    ]
-
-    return {
-        "factura_id": factura.id,
-        "fecha": factura.fecha,
-        "total_mesa": factura.total_mesa,
-        "total_consumos": factura.total_consumos,
-        "total_final": factura.total_final,
-        "mesa_id": factura.mesa_id,
-        "consumos": detalle_consumos
-    }
-
-
-@router.get("/rango")
-def reporte_rango(
-    desde: str = Query(..., description="YYYY-MM-DD"),
-    hasta: str = Query(..., description="YYYY-MM-DD"),
+@router.get("/", response_model=ReporteOut)
+def reporte_turnos(
+    fecha_inicio: str,
+    fecha_fin: str,
+    mesa_id: int | None = None,
     db: Session = Depends(get_db)
 ):
-    inicio = datetime.strptime(desde, "%Y-%m-%d")
-    fin = datetime.strptime(hasta, "%Y-%m-%d") + timedelta(days=1)
+    fecha_inicio_dt = datetime.fromisoformat(fecha_inicio)
+    fecha_fin_dt = datetime.fromisoformat(fecha_fin)
 
-    facturas = db.query(Factura).filter(
-        Factura.fecha >= inicio,
-        Factura.fecha < fin
-    ).all()
-
-    return [formatear_factura(f, db) for f in facturas]
-
-
-@router.get("/hoy")
-def reporte_hoy(db: Session = Depends(get_db)):
-    hoy = datetime.utcnow().date()
-    # rango de hoy 00:00 → mañana 00:00
-    return reporte_rango(
-        desde=str(hoy),
-        hasta=str(hoy),
-        db=db
+    query = db.query(Turno).filter(
+        Turno.hora_inicio >= fecha_inicio_dt,
+        Turno.hora_fin <= fecha_fin_dt,
+        Turno.estado == "cerrado"
     )
 
+    if mesa_id:
+        query = query.filter(Turno.mesa_id == mesa_id)
 
-@router.get("/mes")
-def reporte_mes_actual(db: Session = Depends(get_db)):
-    hoy = datetime.utcnow()
-    inicio_mes = datetime(hoy.year, hoy.month, 1).date()
-    fin_mes = datetime(hoy.year, hoy.month, 28).date()  # flexible
+    turnos_db = query.order_by(Turno.hora_inicio.asc()).all()
 
-    return reporte_rango(
-        desde=str(inicio_mes),
-        hasta=str(hoy.date()),
-        db=db
+    turnos_list = []
+    tot_tiempo = 0
+    tot_prod = 0
+    tot_desc = 0
+    tot_final = 0
+
+    for t in turnos_db:
+        tiempo_total = t.tiempo_estimado_min + t.minutos_extra
+
+        consumos = [
+            ReporteConsumo(
+                producto_nombre=c.producto.nombre,
+                cantidad=c.cantidad,
+                subtotal=c.subtotal
+            )
+            for c in t.consumos
+        ]
+
+        turnos_list.append(
+            ReporteTurno(
+                mesa=t.mesa.nombre,
+                hora_inicio=t.hora_inicio,
+                hora_fin=t.hora_fin,
+                tiempo_total_min=tiempo_total,
+                subtotal_tiempo=t.subtotal_tiempo,
+                subtotal_productos=t.subtotal_productos,
+                descuento=t.descuento,
+                total_final=t.total_final,
+                consumos=consumos
+            )
+        )
+
+        tot_tiempo += t.subtotal_tiempo
+        tot_prod += t.subtotal_productos
+        tot_desc += t.descuento
+        tot_final += t.total_final
+
+    return ReporteOut(
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        mesa_id=mesa_id,
+        turnos=turnos_list,
+        total_tiempo=tot_tiempo,
+        total_productos=tot_prod,
+        total_descuentos=tot_desc,
+        total_general=tot_final
     )

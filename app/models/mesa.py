@@ -11,5 +11,3 @@ class Mesa(Base):
     estado = Column(String, default="libre")
     hora_inicio = Column(DateTime, nullable=True)
     hora_fin = Column(DateTime, nullable=True)
-
-    total_calculado = Column(Float, nullable=True)

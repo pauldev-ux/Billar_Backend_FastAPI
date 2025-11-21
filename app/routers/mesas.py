@@ -7,7 +7,6 @@ from app.schemas.mesa_schema import MesaCreate, MesaUpdate, MesaOut
 from datetime import datetime
 
 router = APIRouter(prefix="/mesas", tags=["Mesas"])
-
 @router.post("/", response_model=MesaOut)
 def create_mesa(data: MesaCreate, db: Session = Depends(get_db)):
     mesa = Mesa(
@@ -24,15 +23,12 @@ def create_mesa(data: MesaCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[MesaOut])
 def listar_mesas(db: Session = Depends(get_db)):
     mesas = db.query(Mesa).all()
-
     resultado = []
 
     for mesa in mesas:
-        turno_activo = (
-            db.query(Turno)
-            .filter(Turno.mesa_id == mesa.id, Turno.estado == "abierto")
+        turno_activo = db.query(Turno)\
+            .filter(Turno.mesa_id == mesa.id, Turno.estado == "abierto")\
             .first()
-        )
 
         resultado.append({
             "id": mesa.id,
@@ -40,15 +36,12 @@ def listar_mesas(db: Session = Depends(get_db)):
             "estado": mesa.estado,
             "tarifa_por_hora": mesa.tarifa_por_hora,
             "hora_inicio": turno_activo.hora_inicio if turno_activo else None,
-            "tiempo_estimado_min": (
-                turno_activo.tiempo_estimado_min + turno_activo.minutos_extra
-                if turno_activo else None
-            ),
             "turno_activo": turno_activo.id if turno_activo else None,
-            "minutos_extra": turno_activo.minutos_extra if turno_activo else 0,
         })
 
     return resultado
+
+
 
 
 
